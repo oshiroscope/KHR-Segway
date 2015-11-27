@@ -23,13 +23,18 @@
 //! power offset
 #define POWER_OFFSET 5
 //! theta offset
-#define THETA_OFFSET (0.035)
+#define THETA_OFFSET (0.03)
 //! L R ratio
 #define LR_RATIO 1.2f
 //! L R sgn
 #define LR_SGN (-1)
 //! omega raw val scale
 #define OMEGA_SCALE 0.00013315805f
+
+//! operate straight offset gain
+#define OPERATE_STRAIGHT_GAIN 50
+//! operate rotate offset gain
+#define OPERATE_ROTATE_GAIN 10
 
 //! IMU instance
 MPU6050 mpu;
@@ -52,7 +57,7 @@ int32_t sumSumPower;
 //! theta gain (p)
 const float kTheta = -1900;//-40;
 //! omega gain (d)
-const float kOmega = -18;//-25;
+const float kOmega = -50;//-25;
 //! x gain (p)
 const float kDistance = 0.0;//-25;
 //! v gain (d)
@@ -64,6 +69,10 @@ int16_t power;
 int16_t left_input;
 //! right input power
 int16_t right_input;
+//! left input power offset
+int16_t left_offset;
+//! right input power offset
+int16_t right_offset;
 //! position
 int32_t xE5;
 //! velocity
@@ -131,9 +140,33 @@ void loop(){
             left_input = power + POWER_OFFSET;
         }else if(power < 0){
             left_input = power - POWER_OFFSET;
+        }else{
+            left_input = 0;
         }
-    
-        md.setSpeeds(left_input, left_input * LR_RATIO * LR_SGN);
+
+        right_input = left_input * LR_RATIO * LR_SGN;
+        
+        if(Serial.available()){
+            char input = Serial.read();
+            if (input == 'w'){
+                left_offset = -OPERATE_STRAIGHT_GAIN;
+                right_offset = OPERATE_STRAIGHT_GAIN;
+            }else if(input == 'a'){
+                left_offset = -OPERATE_ROTATE_GAIN;
+                right_offset = -OPERATE_ROTATE_GAIN;
+            }else if(input == 's'){
+                left_offset = OPERATE_STRAIGHT_GAIN;
+                right_offset = -OPERATE_STRAIGHT_GAIN;
+            }else if(input == 'd'){
+                left_offset = OPERATE_ROTATE_GAIN;
+                right_offset = OPERATE_ROTATE_GAIN;
+            }else{
+                left_offset = 0;
+                right_offset = 0;
+            }
+        }
+        
+        md.setSpeeds(left_input + left_offset, right_input + right_offset);
         stopIfFault();
     }
 }
