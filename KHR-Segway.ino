@@ -134,7 +134,7 @@ void setup() {
     Serial.begin(38400);
 
     //! initialize device
-    Serial.println("Initializing devices...");
+    //Serial.println("Initializing devices...");
     mpu.initialize();
     md.init();
 
@@ -154,8 +154,8 @@ void setup() {
     pinMode(ENC_B_PIN, INPUT_PULLUP);
 
     //! verify comm
-    Serial.println("Testing device connections...");
-    Serial.println(mpu.testConnection() ? "MPU9150 connection successful" : "MPU9150 connection failed");
+    //Serial.println("Testing device connections...");
+    //Serial.println(mpu.testConnection() ? "MPU9150 connection successful" : "MPU9150 connection failed");
 
     FlexiTimer2::set(0.000001, timerIRQ);
     FlexiTimer2::start();
@@ -174,8 +174,8 @@ void loop() {
         Serial.print(omega, 6); Serial.print("\t");
         Serial.print(theta + THETA_OFFSET, 6); Serial.print("\t");
         Serial.print(power); Serial.print("\t");
-        Serial.print(X); Serial.print("\t");
-        Serial.print(V); Serial.print("\t");
+        Serial.print(X * 1.5); Serial.print("\t"); // 1.5 mm / step
+        Serial.print(V * 1.5); Serial.print("\t");
 #endif
     
         if (power > 0) {
