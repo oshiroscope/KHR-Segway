@@ -72,13 +72,13 @@ int32_t sumPower;
 int32_t sumSumPower;
 
 //! theta gain (p)
-const float kTheta = -1200;//-800;//-1900;//-40;
+const float kTheta = -1100;//-800;//-1900;//-40;
 //! omega gain (d)
-const float kOmega = -25;//15;//15;//-25;
+const float kOmega = -20;//15;//15;//-25;
 //! x gain (p)
 const float kDistance = 0.5;//-25;
 //! v gain (d)
-const float kSpeed = 0.3;//-25;
+const float kSpeed = 0.38;//-25;
 
 //! power
 int16_t power;
