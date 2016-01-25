@@ -1,5 +1,3 @@
-
-
 /*
  * @project : KHR-Segway
  * @author  : Shiro
@@ -50,8 +48,13 @@
 #define S_PIN 16
 #define D_PIN 17
 
-#define ENC_A_PIN 5
-#define ENC_B_PIN 3
+#define LEFT_ENC_A_PIN 5
+#define LEFT_ENC_B_PIN 3
+#define RIGHT_ENC_A_PIN 11
+#define RIGHT_ENC_B_PIN 13
+
+#define LEFT_ENC_STEP 0.65502 // 41.7 * pi / 100 / 2
+#define RIGHT_ENC_STEP 0.57648 // 36.7 * pi / 100 / 2
 
 //! IMU instance
 MPU6050 mpu;
@@ -100,12 +103,13 @@ int16_t theta_init = 0.00f;
 int16_t oldInput = 0;
 
 //! position
-volatile int X;
-int oldX;
-float originX = 0;
+volatile float linearX = 0;
+volatile float rotateX = 0;
+float oldLinearX;
+float originLinearX = 0;
 
 //! velocity
-float V;
+float linearV;
 
 //! emergency motor stop
 void stopIfFault() {
@@ -150,8 +154,8 @@ void setup() {
     digitalWrite(D_PIN, HIGH);
 
     //! enc init
-    pinMode(ENC_A_PIN, INPUT_PULLUP);
-    pinMode(ENC_B_PIN, INPUT_PULLUP);
+    pinMode(LEFT_ENC_A_PIN, INPUT_PULLUP);
+    pinMode(LEFT_ENC_B_PIN, INPUT_PULLUP);
 
     //! verify comm
     //Serial.println("Testing device connections...");
@@ -174,8 +178,10 @@ void loop() {
         Serial.print(omega, 6); Serial.print("\t");
         Serial.print(theta + THETA_OFFSET, 6); Serial.print("\t");
         Serial.print(power); Serial.print("\t");
-        Serial.print(X * 1.5); Serial.print("\t"); // 1.5 mm / step
-        Serial.print(V * 1.5); Serial.print("\t");
+        //Serial.print(linearX * 1.5); Serial.print("\t"); // 1.5 mm / step
+        Serial.print(linearX); Serial.print("\t"); 
+        Serial.print(rotateX); Serial.print("\t"); 
+        Serial.print(linearV * 1.5); Serial.print("\t");
 #endif
     
         if (power > 0) {
@@ -191,7 +197,7 @@ void loop() {
             //left_offset = -OPERATE_FORWARD_GAIN;
             //right_offset = OPERATE_FORWARD_GAIN;
             //theta_init = 0.02f;
-            originX += 0.5f;
+            originLinearX += 0.5f;
         } else if (digitalRead(A_PIN) == LOW) {
             left_offset = -OPERATE_ROTATE_GAIN;
             right_offset = -OPERATE_ROTATE_GAIN;
@@ -200,7 +206,7 @@ void loop() {
             //left_offset = OPERATE_BACKWARD_GAIN;
             //right_offset = -OPERATE_BACKWARD_GAIN;
             //theta_init = - 0.02f;
-            originX -= 0.5f;
+            originLinearX -= 0.5f;
         } else if (digitalRead(D_PIN) == LOW) {
             left_offset = OPERATE_ROTATE_GAIN;
             right_offset = OPERATE_ROTATE_GAIN;
@@ -244,15 +250,15 @@ void ctrl() {
         double theta_acc = atan2(-(double)ay, -(double)az);
         theta = 0.98 * (theta + omega * 0.001 * CYCLE_TIME) + 0.02 * theta_acc;
 
-        V = (X - oldX) * 1000 / CYCLE_TIME;
-        oldX = X;
+        linearV = (linearX - oldLinearX) * 1000 / CYCLE_TIME;
+        oldLinearX = linearX;
 
         //! Ctrl
         power =
             (kTheta * (theta + THETA_OFFSET - theta_init))
             + (kOmega * omega)
-            + (kSpeed * V);
-            //+ (kDistance * (X - originX));
+            + (kSpeed * linearV);
+            //+ (kDistance * (X - originLinearX));
 
         //! round
         power = max(min(power, POWER_MAX), POWER_MIN);
@@ -280,23 +286,47 @@ void ctrl() {
 }
 
 void timerIRQ() {
-    static byte bp = 0;
-    bp = bp << 1;
-    if (digitalRead(ENC_A_PIN) == HIGH) {
-        bp |= 0x01;
+    static byte lbp = 0;
+    lbp = lbp << 1;
+    if (digitalRead(LEFT_ENC_A_PIN) == HIGH) {
+        lbp |= 0x01;
     }
-    bp = bp << 1;
-    if (digitalRead(ENC_B_PIN) == HIGH) {
-        bp |= 0x01;
+    lbp = lbp << 1;
+    if (digitalRead(LEFT_ENC_B_PIN) == HIGH) {
+        lbp |= 0x01;
     }
 
-    bp = bp & 0x0F;
+    lbp = lbp & 0x0F;
 
-    if (bp == 0b0111) {
-        X++;
+    if (lbp == 0b0111) {
+	linearX += LEFT_ENC_STEP;
+	rotateX -= LEFT_ENC_STEP;
     }
-    if (bp == 0b1011) {
-        X--;
+    if (lbp == 0b1011) {
+        linearX -= LEFT_ENC_STEP;
+	rotateX += LEFT_ENC_STEP;
     }
+
+    static byte rbp = 0;
+    rbp = rbp << 1;
+    if (digitalRead(RIGHT_ENC_A_PIN) == HIGH) {
+        rbp |= 0x01;
+    }
+    rbp = rbp << 1;
+    if (digitalRead(RIGHT_ENC_B_PIN) == HIGH) {
+        rbp |= 0x01;
+    }
+
+    rbp = rbp & 0x0F;
+
+    if (rbp == 0b0111) {
+	linearX -= RIGHT_ENC_STEP;
+	rotateX -= RIGHT_ENC_STEP;
+    }
+    if (rbp == 0b1011) {
+        linearX += RIGHT_ENC_STEP;
+	rotateX += RIGHT_ENC_STEP;
+    }
+
 }
 
